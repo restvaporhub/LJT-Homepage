@@ -5,32 +5,29 @@ permalink: /publications/
 author_profile: true
 ---
 
-{% if site.author.googlescholar %}
-  <div class="wordwrap">You can also find my articles on <a href="{{site.author.googlescholar}}">my Google Scholar profile</a>.</div>
-{% endif %}
-
 {% include base_path %}
+
+<p>This page lists all six publications recorded in Junteng Liu's memory profile. Publications are grouped by recorded publication type and ordered to match the profile record.</p>
+
+{% if site.author.googlescholar %}
+  <div class="wordwrap">You can also find these publications through <a href="{{ site.author.googlescholar }}">Junteng Liu's Google Scholar profile</a>.</div>
+{% endif %}
 
 <!-- New style rendering if publication categories are defined -->
 {% if site.publication_category %}
-  {% for category in site.publication_category  %}
-    {% assign title_shown = false %}
-    {% for post in site.publications reversed %}
-      {% if post.category != category[0] %}
-        {% continue %}
-      {% endif %}
-      {% unless title_shown %}
-        <h2>{{ category[1].title }}</h2><hr />
-        {% assign title_shown = true %}
-      {% endunless %}
-      {% include archive-single.html %}
-    {% endfor %}
+  {% for category in site.publication_category %}
+    {% assign posts_in_category = site.publications | where: "category", category[0] | sort: "order" %}
+    {% if posts_in_category.size > 0 %}
+      <h2>{{ category[1].title }}</h2>
+      <hr />
+      {% for post in posts_in_category %}
+        {% include archive-single.html %}
+      {% endfor %}
+    {% endif %}
   {% endfor %}
 {% else %}
-  {% for post in site.publications reversed %}
+  {% assign publications_by_order = site.publications | sort: "order" %}
+  {% for post in publications_by_order %}
     {% include archive-single.html %}
   {% endfor %}
 {% endif %}
-
-
-
