@@ -10,7 +10,7 @@ baseurl                  : "/LJT-Homepage"
 repository               : "restvaporhub/LJT-Homepage"
 
 # Site Author
-Author:
+author:
   avatar           : "https://github.com/Vicent0205.png"
   name             : "Junteng Liu"
   pronouns         :
