@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: "gh-pages"
@@ -18,6 +19,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+
+      - name: Ensure GitHub Pages source is configured
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          REPO="$GITHUB_REPOSITORY"
+          if gh api "repos/$REPO/pages" >/tmp/pages.json 2>/tmp/pages-get.err; then
+            echo "GitHub Pages site already exists; ensuring branch source."
+            gh api --method PUT "repos/$REPO/pages" \
+              -f 'build_type=legacy' \
+              -f 'source[branch]=gh-pages' \
+              -f 'source[path]=/'
+          else
+            echo "GitHub Pages site is absent; attempting to create it from gh-pages."
+            gh api --method POST "repos/$REPO/pages" \
+              -f 'build_type=legacy' \
+              -f 'source[branch]=gh-pages' \
+              -f 'source[path]=/' || {
+                echo "::warning::Automatic GitHub Pages enablement was not permitted."
+                cat /tmp/pages-get.err || true
+              }
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
