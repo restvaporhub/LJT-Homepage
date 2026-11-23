@@ -1,0 +1,79 @@
+name: Deploy personal site
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: personal-site-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure Pages source when Pages is already enabled
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" > /tmp/pages.json 2> /tmp/pages.err; then
+            echo "Pages site is already enabled; ensuring gh-pages is the source."
+            gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" \
+              -f build_type=legacy \
+              -f 'source[branch]=gh-pages' \
+              -f 'source[path]=/'
+          else
+            echo "::notice::Pages is not enabled through the API token. The workflow will still publish the built site to the gh-pages branch."
+            cat /tmp/pages.err || true
+          fi
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install JavaScript dependencies
+        run: npm install
+
+      - name: Build JavaScript assets
+        run: npm run build:js
+
+      - name: Build Jekyll site
+        env:
+          JEKYLL_ENV: production
+        run: |
+          set -euo pipefail
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER_NAME="${GITHUB_REPOSITORY_OWNER}"
+          if [ "${REPO_NAME}" = "${OWNER_NAME}.github.io" ]; then
+            BASEURL=""
+          else
+            BASEURL="/${REPO_NAME}"
+          fi
+          echo "Building with baseurl='${BASEURL}'"
+          bundle exec jekyll build --baseurl "${BASEURL}"
+
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          force_orphan: true
+          enable_jekyll: false
