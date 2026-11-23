@@ -20,20 +20,29 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Configure Pages source when Pages is already enabled
+      - name: Inspect Pages configuration
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
+          set -u
+          echo "Repository: ${GITHUB_REPOSITORY}"
           if gh api "repos/${GITHUB_REPOSITORY}/pages" > /tmp/pages.json 2> /tmp/pages.err; then
-            echo "Pages site is already enabled; ensuring gh-pages is the source."
+            echo "Current Pages configuration:"
+            cat /tmp/pages.json
+            echo
+            echo "Attempting source update to gh-pages..."
             gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" \
               -f build_type=legacy \
               -f 'source[branch]=gh-pages' \
-              -f 'source[path]=/'
+              -f 'source[path]=/' \
+              > /tmp/pages-update.json 2> /tmp/pages-update.err || {
+                echo "Source update failed:"
+                cat /tmp/pages-update.err
+              }
+            if [ -f /tmp/pages-update.json ]; then cat /tmp/pages-update.json; fi
           else
-            echo "::notice::Pages is not enabled through the API token. The workflow will still publish the built site to the gh-pages branch."
-            cat /tmp/pages.err || true
+            echo "Pages is not readable:"
+            cat /tmp/pages.err
           fi
 
       - name: Set up Ruby
